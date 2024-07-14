@@ -45,9 +45,9 @@ export const getSchemaObjectType = (schemaObject: SchemaObject) => {
           .join(" | ");
       } else if (schemaObject.items) {
         if (isRefObject(schemaObject.items)) {
-          itemType = getReferenceObjectType(schemaObject.items) as any;
+          itemType = getReferenceObjectType(schemaObject.items);
         } else {
-          itemType = getSchemaObjectType(schemaObject.items) as any;
+          itemType = getSchemaObjectType(schemaObject.items);
         }
       }
 
@@ -94,6 +94,7 @@ export const getSchemaObjectType = (schemaObject: SchemaObject) => {
       return itemType + "[]";
     }
 
+    // type: object
     if (schemaObject.type === "object") {
       const objType: Record<string, any> = {};
       if (schemaObject.properties) {
@@ -156,6 +157,7 @@ export const getSchemaObjectType = (schemaObject: SchemaObject) => {
       return uniqueTypes.join(" | ");
     }
   }
+
   return "unknown";
 };
 
