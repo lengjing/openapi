@@ -3,9 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:src": "rm -rf lib && tsc"
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "@redocly/openapi-core": "^1.18.0",
+    "openapi-typescript": "^7.0.2",
+    "parse-json": "^8.1.0",
+    "ts-morph": "^23.0.0",
+    "typescript": "^5.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "ts-node": "^10.9.2"
+  },
+  "type": "module"
 }
