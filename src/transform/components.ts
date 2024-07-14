@@ -1,8 +1,4 @@
-import {
-  OptionalKind,
-  Project,
-  PropertySignatureStructure
-} from "ts-morph";
+import { OptionalKind, Project, PropertySignatureStructure } from "ts-morph";
 import { ComponentsObject } from "../typing";
 import {
   getObjectType,
@@ -26,7 +22,11 @@ const transformComponents = (components: ComponentsObject) => {
       const schemaObject = components.schemas[key];
 
       if (schemaObject) {
-        if (schemaObject.type === "object") {
+        if (
+          schemaObject.type === "object" ||
+          ("properties" in schemaObject &&
+            typeof schemaObject.properties === "object")
+        ) {
           const interfaceDeclaration = morphSourceFile.addInterface({
             name: key,
             isExported: true,
