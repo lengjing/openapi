@@ -79,6 +79,7 @@ export type ParseSchemaOptions = {
   absoluteRef: string;
   resolver: BaseResolver;
 };
+
 export async function parseSchema(
   schema: unknown,
   { absoluteRef, resolver }: ParseSchemaOptions
@@ -155,6 +156,7 @@ export type ValidateAndBundleOptions = {
   silent: boolean;
   cwd?: URL;
 };
+
 export async function validateAndBundle(
   source: string | URL | OpenAPI3 | Readable | Buffer,
   options: ValidateAndBundleOptions
