@@ -48,12 +48,10 @@ export const isRefObject = (
 //   return docs.length ? docs : undefined;
 // };
 
-export const getObjectType = (obj: SchemaObject | ReferenceObject) => {
-  if (isRefObject(obj)) {
-    return obj.$ref;
+export const getObjectType = (schemaObject: SchemaObject | ReferenceObject) => {
+  if (isRefObject(schemaObject)) {
+    return getReferenceObjectType(schemaObject);
   }
-
-  const schemaObject = obj;
 
   if (schemaObject.type) {
     // primitives
@@ -123,7 +121,7 @@ export const getObjectType = (obj: SchemaObject | ReferenceObject) => {
         }
       }
 
-      return itemType;
+      return JSON.stringify(itemType);
     }
 
     if (schemaObject.type === "object") {
@@ -172,7 +170,7 @@ export const getObjectType = (obj: SchemaObject | ReferenceObject) => {
           }
         }
       }
-      return uniqueTypes;
+      return uniqueTypes.join("|");
     }
   }
 };
@@ -198,6 +196,10 @@ const getPrimitiveType = (
   }
 };
 
+export const getReferenceObjectType = (referenceObject: ReferenceObject) => {
+  return referenceObject.$ref;
+};
+
 export const getParameterObjectType = (parameterObject: ParameterObject) => {
   if (parameterObject.schema) {
     return getObjectType(parameterObject.schema);
@@ -208,7 +210,7 @@ export const getResponseObjectType = (responseObject: ResponseObject) => {
   // responseObject.
 };
 
-export const getFunctionDocs = (operationObject: OperationObject) => {
+export const getOperationObjectDocs = (operationObject: OperationObject) => {
   let doc: OptionalKind<JSDocStructure> = {
     tags: [],
   };

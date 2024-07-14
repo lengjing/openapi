@@ -1,38 +1,18 @@
 import {
   OptionalKind,
   Project,
-  InterfaceDeclarationStructure,
-  PropertySignatureStructure,
+  PropertySignatureStructure
 } from "ts-morph";
-import { ComponentsObject, SchemaObject } from "../typing";
-import { addDocs, getDocs, getType, isRefObject } from "../utils";
+import { ComponentsObject } from "../typing";
+import {
+  getObjectType,
+  getReferenceObjectType,
+  isRefObject,
+} from "../utils.ts";
 
 interface PropertyableNodeStructure {
   properties?: OptionalKind<PropertySignatureStructure>[];
 }
-
-const addProperties = <T extends PropertyableNodeStructure>(
-  struct: T,
-  schemaObject: SchemaObject
-) => {
-  if (schemaObject.type === "object" && schemaObject.properties) {
-    struct.properties = [];
-
-    for (const name of Object.keys(schemaObject.properties)) {
-      const property = schemaObject.properties[name];
-
-      if (property) {
-        const struct: OptionalKind<PropertySignatureStructure> = {
-          name,
-          type: getType(property),
-          docs: isRefObject(property) ? undefined : getDocs(property),
-        };
-
-        struct.properties!.push(struct);
-      }
-    }
-  }
-};
 
 const transformComponents = (components: ComponentsObject) => {
   const project = new Project();
@@ -46,19 +26,63 @@ const transformComponents = (components: ComponentsObject) => {
       const schemaObject = components.schemas[key];
 
       if (schemaObject) {
-        const struct: OptionalKind<InterfaceDeclarationStructure> = {
-          name: key,
-          isExported: true,
-        };
+        if (schemaObject.type === "object") {
+          const interfaceDeclaration = morphSourceFile.addInterface({
+            name: key,
+            isExported: true,
+          });
 
-        addDocs(struct, schemaObject);
+          if (schemaObject.properties) {
+            for (const name of Object.keys(schemaObject.properties)) {
+              const property = schemaObject.properties[name];
 
-        addProperties(struct, schemaObject);
+              if (property) {
+                const propertySignature = interfaceDeclaration.addProperty({
+                  name,
+                  docs: [{ description: property.description }],
+                });
 
-        morphSourceFile.addInterface(struct);
+                if (isRefObject(property)) {
+                  propertySignature.setType(getReferenceObjectType(property));
+                } else {
+                  // propertySignature.setType(getObjectType(property) as any);
+                  if (schemaObject.required) {
+                    if (schemaObject.required.includes(name)) {
+                      propertySignature.setHasQuestionToken(false);
+                    } else {
+                      propertySignature.setHasQuestionToken(true);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        if (schemaObject.type === "array") {
+          if (schemaObject.items) {
+            const items = Array.isArray(schemaObject.items)
+              ? schemaObject.items
+              : [schemaObject.items];
+
+            const types = items.map((v) => {
+              return getObjectType(v);
+            });
+
+            morphSourceFile.addTypeAlias({
+              name: key,
+              type: types.join("|") + "[]",
+            });
+          }
+        }
       }
     }
   }
 
-  return morphSourceFile;
+  return morphSourceFile.getText();
 };
+
+export default transformComponents;
+
+interface a {
+  a: 1;
+}

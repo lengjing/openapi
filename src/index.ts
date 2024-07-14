@@ -31,6 +31,7 @@ import {
 } from "ts-morph";
 import { isRefObject } from "./utils.ts";
 import transformPaths from "./transform/paths.ts";
+import transformComponents from "./transform/components.ts";
 
 console.log(openapi);
 
@@ -57,7 +58,8 @@ const openapiTS = async (
   // console.log(a);
   // const a = generateDefination(schema);
 
-  const a = transformPaths(schema.paths)
+  // const a = transformPaths(schema.paths)
+  const a = transformComponents(schema.components)
 
   console.log(a);
 

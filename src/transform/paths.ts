@@ -1,10 +1,11 @@
+import { Project, Scope } from "ts-morph";
 import type { PathsObject } from "../typing";
 import {
+  getOperationObjectDocs,
   getParameterObjectType,
+  getReferenceObjectType,
   isRefObject,
-  getFunctionDocs,
 } from "../utils.ts";
-import { Project, Scope } from "ts-morph";
 
 export type Method =
   | "get"
@@ -15,6 +16,17 @@ export type Method =
   | "head"
   | "patch"
   | "trace";
+
+const methods = [
+  "get",
+  "put",
+  "post",
+  "delete",
+  "options",
+  "head",
+  "patch",
+  "trace",
+] as Method[];
 
 const transformPaths = (paths: PathsObject) => {
   const resources = Object.keys(paths);
@@ -47,28 +59,18 @@ const transformPaths = (paths: PathsObject) => {
             initializer: "fetch",
             scope: Scope.Private,
           },
-        ]
+        ],
       },
     ],
   });
 
   for (let resource of resources) {
-    const obj = paths[resource];
-    if (!obj) continue;
-    if (isRefObject(obj)) {
+    const pathItemObject = paths[resource];
+    if (!pathItemObject) continue;
+    if (isRefObject(pathItemObject)) {
       // todo:
     } else {
-      const pathItemObject = obj;
-      for (const method of [
-        "get",
-        "put",
-        "post",
-        "delete",
-        "options",
-        "head",
-        "patch",
-        "trace",
-      ] as Method[]) {
+      for (const method of methods) {
         const operationObject = pathItemObject[method];
 
         if (!operationObject) continue;
@@ -83,9 +85,9 @@ const transformPaths = (paths: PathsObject) => {
                 type: (block) => {
                   const params = operationObject.parameters?.map((obj) => {
                     if (isRefObject(obj)) {
-                      return obj.$ref;
+                      return getReferenceObjectType(obj);
                     } else {
-                      getParameterObjectType(obj);
+                      return getParameterObjectType(obj);
                     }
                   });
 
@@ -98,7 +100,7 @@ const transformPaths = (paths: PathsObject) => {
                 `return this.request(this.meta.endpoint, {method: '${method}', ...init})`
               );
             },
-            docs: [getFunctionDocs(operationObject)]
+            docs: [getOperationObjectDocs(operationObject)],
           });
         }
       }
