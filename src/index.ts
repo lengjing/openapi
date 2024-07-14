@@ -8,32 +8,13 @@ import {
   type Document,
   type Config as RedoclyConfig,
 } from "@redocly/openapi-core";
+import { writeFileSync } from "node:fs";
 import { Readable } from "node:stream";
-import type { OpenAPI3, SchemaObject } from "./typing";
 import { fileURLToPath } from "node:url";
 import parseJson from "parse-json";
-import { resolve } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
-import ts from "typescript";
-import openapi, {
-  astToString,
-  transformSchemaObjectWithComposition,
-} from "openapi-typescript";
-import transform from "./transform/paths.ts";
-import {
-  InterfaceDeclarationStructure,
-  JSDocableNodeStructure,
-  OptionalKind,
-  Project,
-  PropertyAssignmentStructure,
-  PropertyNameableNodeStructure,
-  PropertySignatureStructure,
-} from "ts-morph";
-import { isRefObject } from "./utils.ts";
-import transformPaths from "./transform/paths.ts";
 import transformComponents from "./transform/components.ts";
-
-console.log(openapi);
+import type { OpenAPI3 } from "./typing";
+import transformPaths from "./transform/paths.ts";
 
 const openapiTS = async (
   source: string | URL | OpenAPI3 | Buffer | Readable
@@ -60,8 +41,6 @@ const openapiTS = async (
 
   // const a = transformPaths(schema.paths)
   const a = transformComponents(schema.components)
-
-  console.log(a);
 
   writeFileSync('./b.ts', a);
 
@@ -270,55 +249,10 @@ export async function validateAndBundle(
 }
 
 // const file = readFileSync(resolve("./examples/sample.yaml"), 'utf-8')
-const file = new URL("../examples/sample.yaml", import.meta.url);
+const file = new URL("../examples/a.yaml", import.meta.url);
 // const ast = await openapi(file);
 // const str = astToString(ast);
 // console.log(str);
 // writeFileSync("./my-schema.ts", str);
 
 openapiTS(file);
-
-// interface PropertyableNodeStructure{
-//   properties?: OptionalKind<PropertySignatureStructure>[];
-// }
-
-// const addDocs = <T extends JSDocableNodeStructure>(
-//   struct: T,
-//   schemaObject: SchemaObject
-// ) => {
-//   struct.docs = [{ description: schemaObject.description }];
-// };
-
-
-// const generateDefination = (schema: OpenAPI3) => {
-//   const project = new Project();
-
-//   const morphSourceFile = project.createSourceFile("temp.ts", "", {
-//     overwrite: true,
-//   });
-
-//   const { components } = schema;
-
-//   if (components?.schemas) {
-//     for (const key of Object.keys(components.schemas)) {
-//       const schemaObject = components.schemas[key];
-
-//       if (schemaObject) {
-//         const struct: OptionalKind<InterfaceDeclarationStructure> = {
-//           name: key,
-//           isExported: true,
-//         };
-
-//         addDocs(struct, schemaObject);
-
-//         addProperties(struct, schemaObject);
-
-//         morphSourceFile.addInterface(struct);
-//       }
-//     }
-//   }
-
-//   return morphSourceFile;
-// };
-
-// const generateImplementation = () => {};

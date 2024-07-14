@@ -1,3 +1,4 @@
+import { parseRef } from "@redocly/openapi-core/lib/ref-utils.js";
 import { JSDocStructure, OptionalKind } from "ts-morph";
 import type {
   OperationObject,
@@ -13,46 +14,7 @@ export const isRefObject = (
   return "$ref" in object ? true : false;
 };
 
-// export const addDocs = <T extends JSDocableNodeStructure>(
-//   struct: T,
-//   schemaObject: SchemaObject
-// ) => {
-//   const docs = getDocs(schemaObject);
-
-//   if (docs) {
-//     if (!struct.docs) {
-//       struct.docs = [];
-//     }
-
-//     struct.docs = [...struct.docs, ...docs];
-//   }
-// };
-
-// export const getDocs = (schemaObject: SchemaObject | OperationObject) => {
-//   const docs: OptionalKind<JSDocStructure>[] = [];
-
-//   if (schemaObject.description) {
-//     docs.push({
-//       description: schemaObject.description,
-//       // tags: [{kind: }]
-//     });
-//   }
-
-//   if (schemaObject.externalDocs) {
-//     docs.push({
-//       description: schemaObject.externalDocs.description,
-//       tags: [{ tagName: "@See", text: schemaObject.externalDocs.url }],
-//     });
-//   }
-
-//   return docs.length ? docs : undefined;
-// };
-
-export const getObjectType = (schemaObject: SchemaObject | ReferenceObject) => {
-  if (isRefObject(schemaObject)) {
-    return getReferenceObjectType(schemaObject);
-  }
-
+export const getSchemaObjectType = (schemaObject: SchemaObject) => {
   if (schemaObject.type) {
     // primitives
     if (
@@ -65,66 +27,87 @@ export const getObjectType = (schemaObject: SchemaObject | ReferenceObject) => {
       return getPrimitiveType(schemaObject.type);
     }
 
-    // type: array (with support for tuples)
+    // type: array
     if (schemaObject.type === "array") {
-      let itemType: any[] = [];
+      let itemType = "unknown";
       if (schemaObject.prefixItems || Array.isArray(schemaObject.items)) {
         const prefixItems =
           schemaObject.prefixItems ??
           (schemaObject.items as (SchemaObject | ReferenceObject)[]);
-        itemType = prefixItems.map((item) => getObjectType(item));
-      } else if (schemaObject.items) {
-        // if ("type" in schemaObject.items && schemaObject.items.type === "array") {
-        //   itemType = getType(schemaObject.items);
-        // } else {
-        //   itemType = getType(schemaObject.items);
-        // }
-      }
-
-      const min: number =
-        typeof schemaObject.minItems === "number" && schemaObject.minItems >= 0
-          ? schemaObject.minItems
-          : 0;
-      const max: number | undefined =
-        typeof schemaObject.maxItems === "number" &&
-        schemaObject.maxItems >= 0 &&
-        min <= schemaObject.maxItems
-          ? schemaObject.maxItems
-          : undefined;
-      const estimateCodeSize =
-        typeof max !== "number" ? min : (max * (max + 1) - min * (min - 1)) / 2;
-      if (
-        (min !== 0 || max !== undefined) &&
-        estimateCodeSize < 30 // "30" is an arbitrary number but roughly around when TS starts to struggle with tuple inference in practice
-      ) {
-        // if maxItems is set, then return a union of all permutations of possible tuple types
-        if (schemaObject.maxItems! > 0) {
-          const members: any[] = [];
-          // populate 1 short of min …
-          for (let i = 0; i <= (max ?? 0) - min; i++) {
-            const elements: any[] = [];
-            for (let j = min; j < i + min; j++) {
-              elements.push(itemType);
+        itemType = prefixItems
+          .map((item) => {
+            if (isRefObject(item)) {
+              return getReferenceObjectType(item);
+            } else {
+              return getSchemaObjectType(item);
             }
-            members.push(elements);
-          }
-          return members;
-        }
-        // if maxItems not set, then return a simple tuple type the length of `min`
-        else {
-          const elements: any[] = [];
-          for (let i = 0; i < min; i++) {
-            elements.push(itemType);
-          }
-          elements.push(itemType);
-          return elements;
+          })
+          .join(" | ");
+      } else if (schemaObject.items) {
+        if (isRefObject(schemaObject.items)) {
+          itemType = getReferenceObjectType(schemaObject.items) as any;
+        } else {
+          itemType = getSchemaObjectType(schemaObject.items) as any;
         }
       }
 
-      return JSON.stringify(itemType);
+      // const min: number =
+      //   typeof schemaObject.minItems === "number" && schemaObject.minItems >= 0
+      //     ? schemaObject.minItems
+      //     : 0;
+      // const max: number | undefined =
+      //   typeof schemaObject.maxItems === "number" &&
+      //   schemaObject.maxItems >= 0 &&
+      //   min <= schemaObject.maxItems
+      //     ? schemaObject.maxItems
+      //     : undefined;
+      // const estimateCodeSize =
+      //   typeof max !== "number" ? min : (max * (max + 1) - min * (min - 1)) / 2;
+      // if (
+      //   (min !== 0 || max !== undefined) &&
+      //   estimateCodeSize < 30 // "30" is an arbitrary number but roughly around when TS starts to struggle with tuple inference in practice
+      // ) {
+      //   // if maxItems is set, then return a union of all permutations of possible tuple types
+      //   if (schemaObject.maxItems! > 0) {
+      //     const members: any[] = [];
+      //     // populate 1 short of min …
+      //     for (let i = 0; i <= (max ?? 0) - min; i++) {
+      //       const elements: any[] = [];
+      //       for (let j = min; j < i + min; j++) {
+      //         elements.push(itemType);
+      //       }
+      //       members.push(elements);
+      //     }
+      //     return members;
+      //   }
+      //   // if maxItems not set, then return a simple tuple type the length of `min`
+      //   else {
+      //     const elements: any[] = [];
+      //     for (let i = 0; i < min; i++) {
+      //       elements.push(itemType);
+      //     }
+      //     elements.push(itemType);
+      //     return elements;
+      //   }
+      // }
+
+      return itemType + "[]";
     }
 
     if (schemaObject.type === "object") {
+      const objType: Record<string, any> = {};
+      if (schemaObject.properties) {
+        for (const name of Object.keys(schemaObject.properties)) {
+          const property = schemaObject.properties[name];
+
+          if (property) {
+            objType[name] = isRefObject(property)
+              ? getReferenceObjectType(property)
+              : getSchemaObjectType(property);
+          }
+        }
+      }
+      return objectToString(objType);
     }
 
     // polymorphic, or 3.1 nullable
@@ -148,7 +131,7 @@ export const getObjectType = (schemaObject: SchemaObject | ReferenceObject) => {
           uniqueTypes.push(
             t === "null" || t === null
               ? "null"
-              : getObjectType(
+              : getSchemaObjectType(
                   {
                     ...schemaObject,
                     type: t,
@@ -165,14 +148,69 @@ export const getObjectType = (schemaObject: SchemaObject | ReferenceObject) => {
             }
           } else {
             uniqueTypes.push(
-              getObjectType({ ...schemaObject, type: t } as SchemaObject)
+              getSchemaObjectType({ ...schemaObject, type: t } as SchemaObject)
             );
           }
         }
       }
-      return uniqueTypes.join("|");
+      return uniqueTypes.join(" | ");
     }
   }
+  return "unknown";
+};
+
+export const getReferenceObjectType = (referenceObject: ReferenceObject) => {
+  const { pointer } = parseRef(referenceObject.$ref);
+
+  return pointer.slice(2).reduce((a, b) => a + "['" + b + "']");
+};
+
+export const getParameterObjectType = (parameterObject: ParameterObject) => {
+  if (parameterObject.schema) {
+    return getSchemaObjectType(parameterObject.schema);
+  }
+};
+
+export const getResponseObjectType = (responseObject: ResponseObject) => {
+  // responseObject.
+};
+
+export const getOperationObjectDocs = (operationObject: OperationObject) => {
+  let doc: OptionalKind<JSDocStructure> = {
+    tags: [],
+  };
+
+  if (operationObject.summary) {
+    doc.description = operationObject.summary;
+  }
+
+  if (operationObject.description) {
+    doc.tags!.push({
+      tagName: "description",
+      text: operationObject.description,
+    });
+  }
+
+  operationObject.parameters?.forEach((parameter) => {
+    if (!isRefObject(parameter)) {
+      if (parameter.name) {
+        doc.tags!.push({
+          tagName: "param",
+          text: parameter.name + " " + parameter.description,
+        });
+      }
+    }
+  });
+
+  const res200 = operationObject.responses?.["200"];
+
+  if (res200) {
+    if (!isRefObject(res200)) {
+      doc.tags!.push({ tagName: "returns", text: res200.description });
+    }
+  }
+
+  return doc;
 };
 
 const getPrimitiveType = (
@@ -194,56 +232,48 @@ const getPrimitiveType = (
   if (type === "boolean") {
     return "boolean";
   }
+
+  return "unknown";
 };
 
-export const getReferenceObjectType = (referenceObject: ReferenceObject) => {
-  return referenceObject.$ref;
-};
-
-export const getParameterObjectType = (parameterObject: ParameterObject) => {
-  if (parameterObject.schema) {
-    return getObjectType(parameterObject.schema);
-  }
-};
-
-export const getResponseObjectType = (responseObject: ResponseObject) => {
-  // responseObject.
-};
-
-export const getOperationObjectDocs = (operationObject: OperationObject) => {
-  let doc: OptionalKind<JSDocStructure> = {
-    tags: [],
-  };
-
-  if (operationObject.summary) {
-    doc.description = operationObject.summary;
+const objectToString = (
+  obj: Record<string, any>,
+  seen = new WeakSet(),
+  indent = 0
+) => {
+  if (typeof obj !== "object" || obj === null) {
+    return String(obj);
   }
 
-  if (operationObject.description) {
-    doc.tags?.push({
-      tagName: "description",
-      text: operationObject.description,
-    });
+  if (seen.has(obj)) {
+    return "[Circular]";
   }
 
-  operationObject.parameters?.forEach((parameter) => {
-    if (!isRefObject(parameter)) {
-      if (parameter.name) {
-        doc.tags?.push({
-          tagName: "param",
-          text: parameter.name + " " + parameter.description,
-        });
+  seen.add(obj);
+
+  let indentStr = " ".repeat(indent);
+  let result;
+  if (Array.isArray(obj)) {
+    result = "[\n";
+    for (let i = 0; i < obj.length; i++) {
+      result +=
+        indentStr + "  " + objectToString(obj[i], seen, indent + 2) + ",\n";
+    }
+    result += indentStr + "]";
+  } else {
+    result = "{\n";
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        result +=
+          indentStr +
+          "  " +
+          key +
+          ": " +
+          objectToString(obj[key], seen, indent + 2) +
+          ",\n";
       }
     }
-  });
-
-  const res200 = operationObject.responses?.["200"];
-
-  if (res200) {
-    if (!isRefObject(res200)) {
-      doc.tags?.push({ tagName: "returns", text: res200.description });
-    }
+    result += indentStr + "}";
   }
-
-  return doc;
+  return result;
 };

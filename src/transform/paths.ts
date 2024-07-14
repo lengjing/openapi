@@ -74,6 +74,7 @@ const transformPaths = (paths: PathsObject) => {
         const operationObject = pathItemObject[method];
 
         if (!operationObject) continue;
+
         if (isRefObject(operationObject)) {
           // todo:
         } else if (operationObject.operationId) {
@@ -83,13 +84,15 @@ const transformPaths = (paths: PathsObject) => {
               {
                 name: "init",
                 type: (block) => {
-                  const params = operationObject.parameters?.map((obj) => {
-                    if (isRefObject(obj)) {
-                      return getReferenceObjectType(obj);
-                    } else {
-                      return getParameterObjectType(obj);
+                  const params = operationObject.parameters?.map(
+                    (parameter) => {
+                      if (isRefObject(parameter)) {
+                        return getReferenceObjectType(parameter);
+                      } else {
+                        return getParameterObjectType(parameter);
+                      }
                     }
-                  });
+                  );
 
                   block.write(`{params: ${JSON.stringify(params)}}`);
                 },
@@ -107,7 +110,6 @@ const transformPaths = (paths: PathsObject) => {
     }
   }
 
-  // return type;
   return morphSourceFile.getText();
 };
 

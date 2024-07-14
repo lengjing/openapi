@@ -1,14 +1,10 @@
-import { OptionalKind, Project, PropertySignatureStructure } from "ts-morph";
+import { Project } from "ts-morph";
 import { ComponentsObject } from "../typing";
 import {
-  getObjectType,
   getReferenceObjectType,
+  getSchemaObjectType,
   isRefObject,
 } from "../utils.ts";
-
-interface PropertyableNodeStructure {
-  properties?: OptionalKind<PropertySignatureStructure>[];
-}
 
 const transformComponents = (components: ComponentsObject) => {
   const project = new Project();
@@ -37,42 +33,35 @@ const transformComponents = (components: ComponentsObject) => {
               const property = schemaObject.properties[name];
 
               if (property) {
-                const propertySignature = interfaceDeclaration.addProperty({
-                  name,
-                  docs: [{ description: property.description }],
-                });
+                try {
+                  const propertySignature = interfaceDeclaration.addProperty({
+                    name,
+                    docs: [{ description: property.description }],
+                  });
 
-                if (isRefObject(property)) {
-                  propertySignature.setType(getReferenceObjectType(property));
-                } else {
-                  // propertySignature.setType(getObjectType(property) as any);
-                  if (schemaObject.required) {
-                    if (schemaObject.required.includes(name)) {
-                      propertySignature.setHasQuestionToken(false);
-                    } else {
-                      propertySignature.setHasQuestionToken(true);
+                  if (isRefObject(property)) {
+                    propertySignature.setType(getReferenceObjectType(property));
+                  } else {
+                    propertySignature.setType(getSchemaObjectType(property));
+
+                    if (schemaObject.required) {
+                      if (!schemaObject.required.includes(name)) {
+                        propertySignature.setHasQuestionToken(true);
+                      }
                     }
                   }
-                }
+                } catch (err) {}
               }
             }
           }
         }
+
         if (schemaObject.type === "array") {
-          if (schemaObject.items) {
-            const items = Array.isArray(schemaObject.items)
-              ? schemaObject.items
-              : [schemaObject.items];
-
-            const types = items.map((v) => {
-              return getObjectType(v);
-            });
-
-            morphSourceFile.addTypeAlias({
-              name: key,
-              type: types.join("|") + "[]",
-            });
-          }
+          morphSourceFile.addTypeAlias({
+            name: key,
+            type: getSchemaObjectType(schemaObject),
+            isExported: true,
+          });
         }
       }
     }
@@ -82,7 +71,3 @@ const transformComponents = (components: ComponentsObject) => {
 };
 
 export default transformComponents;
-
-interface a {
-  a: 1;
-}
