@@ -1,21 +1,14 @@
 import { Project, Scope } from "ts-morph";
 import type { PathsObject } from "../typing";
 import {
-  getOperationObjectDocs,
+  getOperationObjectDoc,
   getParameterObjectType,
   getReferenceObjectType,
+  getResponseObjectType,
   isRefObject,
 } from "../utils.ts";
 
-export type Method =
-  | "get"
-  | "put"
-  | "post"
-  | "delete"
-  | "options"
-  | "head"
-  | "patch"
-  | "trace";
+export type Method = typeof methods[number];
 
 const methods = [
   "get",
@@ -26,7 +19,7 @@ const methods = [
   "head",
   "patch",
   "trace",
-] as Method[];
+] as const;
 
 const transformPaths = (paths: PathsObject) => {
   const resources = Object.keys(paths);
@@ -78,7 +71,7 @@ const transformPaths = (paths: PathsObject) => {
         if (isRefObject(operationObject)) {
           // todo:
         } else if (operationObject.operationId) {
-          classDeclaration.addMethod({
+          const methodDeclration = classDeclaration.addMethod({
             name: operationObject.operationId,
             parameters: [
               {
@@ -103,12 +96,32 @@ const transformPaths = (paths: PathsObject) => {
                 `return this.request(this.meta.endpoint, {method: '${method}', ...init})`
               );
             },
-            docs: [getOperationObjectDocs(operationObject)],
           });
+
+          const res200 = operationObject.responses?.["200"];
+          if (res200) {
+            const returnType = isRefObject(res200)
+              ? getReferenceObjectType(res200)
+              : getResponseObjectType(res200);
+
+            if (returnType) {
+              methodDeclration.setReturnType(returnType);
+            }
+          }
+
+          const doc = getOperationObjectDoc(operationObject);
+          if (doc) {
+            methodDeclration.addJsDoc(doc);
+          }
         }
       }
     }
   }
+
+  morphSourceFile.addImportDeclaration({
+    "namedImports": [{"name": 'a'}],
+    "moduleSpecifier": './a'
+  })
 
   return morphSourceFile.getText();
 };

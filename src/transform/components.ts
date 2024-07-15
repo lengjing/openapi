@@ -2,6 +2,7 @@ import { Project } from "ts-morph";
 import { ComponentsObject } from "../typing";
 import {
   getReferenceObjectType,
+  getSchemaObjectDoc,
   getSchemaObjectType,
   isRefObject,
 } from "../utils.ts";
@@ -36,7 +37,6 @@ const transformComponents = (components: ComponentsObject) => {
                 try {
                   const propertySignature = interfaceDeclaration.addProperty({
                     name,
-                    docs: [{ description: property.description }],
                   });
 
                   if (isRefObject(property)) {
@@ -44,10 +44,13 @@ const transformComponents = (components: ComponentsObject) => {
                   } else {
                     propertySignature.setType(getSchemaObjectType(property));
 
-                    if (schemaObject.required) {
-                      if (!schemaObject.required.includes(name)) {
-                        propertySignature.setHasQuestionToken(true);
-                      }
+                    if (!schemaObject.required?.includes(name)) {
+                      propertySignature.setHasQuestionToken(true);
+                    }
+
+                    const doc = getSchemaObjectDoc(property);
+                    if (doc) {
+                      propertySignature.addJsDoc(doc);
                     }
                   }
                 } catch (err) {}

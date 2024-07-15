@@ -8,16 +8,22 @@ import {
   type Document,
   type Config as RedoclyConfig,
 } from "@redocly/openapi-core";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import parseJson from "parse-json";
-import transformComponents from "./transform/components.ts";
+import { transformComponents, transformPaths } from "./transform/index.ts";
 import type { OpenAPI3 } from "./typing";
-import transformPaths from "./transform/paths.ts";
 
 const openapiTS = async (
-  source: string | URL | OpenAPI3 | Buffer | Readable
+  source: string | URL | OpenAPI3 | Buffer | Readable,
+  options?: {
+    parameters: (a: { contentType: string; params: '{a: Pet[]}', body: '{}' }) => Record<string, string>;
+    /**
+     * ({method, url, contentType})=> `return axios.${method}(${url}, {headers: {content-type: ${contentType}}})`
+     */
+    statements: (a: { method: string; contentType: string }) => string;
+  }
 ) => {
   const redoc = await createConfig(
     {
@@ -30,19 +36,11 @@ const openapiTS = async (
 
   const schema = await validateAndBundle(source, { redoc, silent: false });
 
-  console.log(schema);
+  const implmentsText = transformPaths(schema.paths);
+  const declarationText = transformComponents(schema.components);
 
-  // const a = transform(schema);
-
-  // const str = astToString(a);
-
-  // console.log(a);
-  // const a = generateDefination(schema);
-
-  // const a = transformPaths(schema.paths)
-  const a = transformComponents(schema.components)
-
-  writeFileSync('./b.ts', a);
+  writeFileSync("./a.ts", implmentsText);
+  writeFileSync("./a.d.ts", declarationText);
 
   // const ctx = {
   //   additionalProperties: options.additionalProperties ?? false,
@@ -250,8 +248,8 @@ export async function validateAndBundle(
   return bundled.bundle.parsed;
 }
 
-// const file = readFileSync(resolve("./examples/sample.yaml"), 'utf-8')
-const file = new URL("../examples/a.yaml", import.meta.url);
+const file = readFileSync("./examples/sample.yaml", "utf-8");
+// const file = new URL("../examples/a.yaml", import.meta.url);
 // const ast = await openapi(file);
 // const str = astToString(ast);
 // console.log(str);

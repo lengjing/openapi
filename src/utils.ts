@@ -17,14 +17,20 @@ export const isRefObject = (
 export const getSchemaObjectType = (schemaObject: SchemaObject) => {
   if (schemaObject.type) {
     // primitives
-    if (
-      schemaObject.type === "string" ||
-      schemaObject.type === "null" ||
-      schemaObject.type === "boolean" ||
-      schemaObject.type === "integer" ||
-      schemaObject.type === "number"
-    ) {
-      return getPrimitiveType(schemaObject.type);
+    if (schemaObject.type === "string") {
+      return "string";
+    }
+
+    if (schemaObject.type === "null") {
+      return "null";
+    }
+
+    if (schemaObject.type === "boolean") {
+      return "boolean";
+    }
+
+    if (schemaObject.type === "integer" || schemaObject.type === "number") {
+      return "number";
     }
 
     // type: array
@@ -174,16 +180,51 @@ export const getParameterObjectType = (parameterObject: ParameterObject) => {
 };
 
 export const getResponseObjectType = (responseObject: ResponseObject) => {
-  // responseObject.
+  if (responseObject.content) {
+    for (const contentType of Object.keys(responseObject.content)) {
+      const mediaTypeObject = responseObject.content[contentType];
+
+      if (mediaTypeObject?.schema) {
+        return isRefObject(mediaTypeObject.schema)
+          ? getReferenceObjectType(mediaTypeObject.schema)
+          : getSchemaObjectType(mediaTypeObject.schema);
+      }
+    }
+  }
 };
 
-export const getOperationObjectDocs = (operationObject: OperationObject) => {
+const isDocEmpty = (doc: OptionalKind<JSDocStructure>) => {
+  return !doc.description && !doc.tags?.length ? true : false;
+};
+
+export const getSchemaObjectDoc = (schemaObject: SchemaObject) => {
+  const doc: OptionalKind<JSDocStructure> = {
+    description: "",
+    tags: [],
+  };
+
+  if (schemaObject.description) {
+    doc.tags!.push({
+      tagName: "description",
+      text: schemaObject.description,
+    });
+  }
+
+  if (schemaObject.format) {
+    doc.description += `format: ${schemaObject.format}`;
+  }
+
+  return isDocEmpty(doc) ? undefined : doc;
+};
+
+export const getOperationObjectDoc = (operationObject: OperationObject) => {
   let doc: OptionalKind<JSDocStructure> = {
+    description: "",
     tags: [],
   };
 
   if (operationObject.summary) {
-    doc.description = operationObject.summary;
+    doc.description += operationObject.summary;
   }
 
   if (operationObject.description) {
@@ -212,30 +253,7 @@ export const getOperationObjectDocs = (operationObject: OperationObject) => {
     }
   }
 
-  return doc;
-};
-
-const getPrimitiveType = (
-  type: "null" | "string" | "number" | "integer" | "boolean"
-) => {
-  // type: null
-  if (type === "null") {
-    return "null";
-  }
-  // type: string
-  if (type === "string") {
-    return "string";
-  }
-  // type: number / type: integer
-  if (type === "number" || type === "integer") {
-    return "number";
-  }
-  // type: boolean
-  if (type === "boolean") {
-    return "boolean";
-  }
-
-  return "unknown";
+  return isDocEmpty(doc) ? undefined : doc;
 };
 
 const objectToString = (
