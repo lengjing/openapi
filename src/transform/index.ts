@@ -1,2 +1,2 @@
-export { default as transformComponents } from "./components.ts";
-export { default as transformPaths } from "./paths.ts";
+export { default as transformComponents } from "./components";
+export { default as transformPaths } from "./paths";

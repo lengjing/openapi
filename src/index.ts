@@ -8,11 +8,10 @@ import {
   type Document,
   type Config as RedoclyConfig,
 } from "@redocly/openapi-core";
-import { readFileSync, writeFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import parseJson from "parse-json";
-import { transformComponents, transformPaths } from "./transform/index.ts";
+import { transformComponents, transformPaths } from "./transform";
 import type { OpenAPI3 } from "./typing";
 
 const openapiTS = async (
@@ -39,8 +38,10 @@ const openapiTS = async (
   const implmentsText = transformPaths(schema.paths);
   const declarationText = transformComponents(schema.components);
 
-  writeFileSync("./a.ts", implmentsText);
-  writeFileSync("./a.d.ts", declarationText);
+  return {
+    implmentsText,
+    declarationText,
+  }
 
   // const ctx = {
   //   additionalProperties: options.additionalProperties ?? false,
@@ -248,11 +249,4 @@ export async function validateAndBundle(
   return bundled.bundle.parsed;
 }
 
-const file = readFileSync("./examples/sample.yaml", "utf-8");
-// const file = new URL("../examples/a.yaml", import.meta.url);
-// const ast = await openapi(file);
-// const str = astToString(ast);
-// console.log(str);
-// writeFileSync("./my-schema.ts", str);
-
-openapiTS(file);
+export default openapiTS;

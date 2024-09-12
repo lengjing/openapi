@@ -5,7 +5,7 @@ import {
   getSchemaObjectDoc,
   getSchemaObjectType,
   isRefObject,
-} from "../utils.ts";
+} from "../utils";
 
 const transformComponents = (components: ComponentsObject) => {
   const project = new Project();

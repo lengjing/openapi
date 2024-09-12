@@ -6,7 +6,7 @@ import {
   getReferenceObjectType,
   getResponseObjectType,
   isRefObject,
-} from "../utils.ts";
+} from "../utils";
 
 export type Method = typeof methods[number];
 

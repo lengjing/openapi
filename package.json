@@ -1,24 +1,26 @@
 {
   "name": "openapi",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "./lib/index.js",
+  "type": "commonjs",
+  "types": "./lib/typing.d.ts",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/index.ts",
+    "dev": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:src": "rm -rf lib && tsc"
+    "build": "rm -rf lib && tsc"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@redocly/openapi-core": "^1.18.0",
-    "parse-json": "^8.1.0",
+    "parse-json": "^4.0.0",
     "ts-morph": "^23.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
+    "@types/parse-json": "^4.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
-  },
-  "type": "module"
+  }
 }
